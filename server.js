@@ -4,14 +4,17 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+app.use(cors()); // 允許前端跨域呼叫
 
+// ==========================================
+// 1. 取得 TDX Access Token 的函式 (含快取機制)
+// ==========================================
 let cachedToken = null;
 let tokenExpiry = 0;
 
 async function getTDXToken() {
     if (cachedToken && Date.now() < tokenExpiry) {
-        return cachedToken;
+        return cachedToken; // 如果還沒過期，直接回傳快取的 Token
     }
 
     const authUrl = 'https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token';
@@ -25,13 +28,16 @@ async function getTDXToken() {
     });
 
     cachedToken = response.data.access_token;
-    tokenExpiry = Date.now() + (response.data.expires_in * 1000) - 60000;
+    tokenExpiry = Date.now() + (response.data.expires_in * 1000) - 60000; // 提前 1 分鐘過期
     return cachedToken;
 }
 
+// ==========================================
+// 2. 查詢時刻表 API (原有功能)
+// ==========================================
 app.get('/api/timetable', async (req, res) => {
     try {
-        const { origin, destination, date } = req.query;
+        const { origin, destination, date } = req.query; // 從前端接收參數
 
         if (!origin || !destination || !date) {
             return res.status(400).json({ error: '請提供 origin, destination, date 參數' });
@@ -39,8 +45,35 @@ app.get('/api/timetable', async (req, res) => {
 
         const token = await getTDXToken();
         
-        // 方案一：v3 端点，日期格式保持 YYYY-MM-DD
+        // 使用 v3 的 DailyTrainTimetable 端點，日期格式為 YYYY-MM-DD
         const tdxUrl = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyTrainTimetable/OD/${origin}/to/${destination}/${date}?$format=JSON`;
+
+        const response = await axios.get(tdxUrl, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        res.json(response.data); // 把真實時刻表資料回傳給前端
+    } catch (error) {
+        console.error('TDX 時刻表 API 錯誤:', error.response ? error.response.data : error.message);
+        res.status(500).json({ error: '無法取得時刻表資料', details: error.message });
+    }
+});
+
+// ==========================================
+// 3. 查詢票價 API (全新功能)
+// ==========================================
+app.get('/api/fare', async (req, res) => {
+    try {
+        const { origin, destination } = req.query;
+
+        if (!origin || !destination) {
+            return res.status(400).json({ error: '請提供 origin 和 destination 參數' });
+        }
+
+        const token = await getTDXToken();
+        
+        // 呼叫 TDX 的票價 API (ODFare)
+        const tdxUrl = `https://tdx.transportdata.tw/api/basic/v2/Rail/TRA/ODFare/${origin}/to/${destination}?$format=JSON`;
 
         const response = await axios.get(tdxUrl, {
             headers: { Authorization: `Bearer ${token}` }
@@ -48,11 +81,14 @@ app.get('/api/timetable', async (req, res) => {
 
         res.json(response.data);
     } catch (error) {
-        console.error('TDX API 錯誤詳細資訊:', error.response ? error.response.data : error.message);
-        res.status(500).json({ error: '無法取得時刻表資料', details: error.message });
+        console.error('TDX 票價 API 錯誤:', error.response ? error.response.data : error.message);
+        res.status(500).json({ error: '無法取得票價資料', details: error.message });
     }
 });
 
+// ==========================================
+// 4. 啟動伺服器
+// ==========================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`後端伺服器正在 http://localhost:${PORT} 運行中...`);
