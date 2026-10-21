@@ -1,0 +1,6 @@
+cd railway-backend
+
+cd railway-backend
+
+
+node server.js
