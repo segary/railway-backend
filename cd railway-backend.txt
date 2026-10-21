@@ -1,5 +1,0 @@
-cd railway-backend
-
-cd railway-backend
-
-
