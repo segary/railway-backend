@@ -4,3 +4,6 @@ cd railway-backend
 
 
 node server.js
+
+git config --global user.name "segary"
+git config --global user.email "segary1978@gmail.com"
