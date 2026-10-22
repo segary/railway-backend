@@ -27,7 +27,7 @@ async function getTDXToken() {
     return cachedToken;
 }
 
-// 1. 時刻表 API
+// 時刻表 API (維持不變)
 app.get('/api/timetable', async (req, res) => {
     try {
         const { origin, destination, date } = req.query;
@@ -41,7 +41,7 @@ app.get('/api/timetable', async (req, res) => {
     }
 });
 
-// 2. 票價 API
+// 票價 API (維持不變)
 app.get('/api/fare', async (req, res) => {
     try {
         const { origin, destination } = req.query;
@@ -55,7 +55,7 @@ app.get('/api/fare', async (req, res) => {
     }
 });
 
-// 3. 完整停靠站 API (最終修正版)
+// 完整停靠站 API (最終修正版 - 解決 400 錯誤)
 app.get('/api/stops', async (req, res) => {
     try {
         const { trainNo, date } = req.query;
@@ -63,13 +63,12 @@ app.get('/api/stops', async (req, res) => {
         
         const token = await getTDXToken();
         
-        // 改用 TrainDate 查詢並用 $filter 過濾車次，這是 TDX 官方標準寫法
+        // 關鍵修正：改用 TrainDate 路徑 + $filter 過濾車次
         const tdxUrl = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyTrainTimetable/TrainDate/${date}?$filter=TrainNo eq '${trainNo}'&$format=JSON`;
         
         const response = await axios.get(tdxUrl, { headers: { Authorization: `Bearer ${token}` } });
         res.json(response.data);
     } catch (error) {
-        // 如果 TDX 還是報錯，把詳細錯誤印出來
         console.error('TDX 停靠站錯誤:', error.response ? error.response.data : error.message);
         res.status(500).json({ error: '停靠站錯誤', details: error.message });
     }
