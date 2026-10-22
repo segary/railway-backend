@@ -1,6 +1,8 @@
 cd railway-backend
 
-cd railway-backend
+
+cd C:\Users\segary\railway-backend
+
 
 
 node server.js
