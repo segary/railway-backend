@@ -55,7 +55,7 @@ app.get('/api/fare', async (req, res) => {
     }
 });
 
-// 完整停靠站 API (最終修正版 - 解決 400 錯誤)
+// 完整停靠站 API (最終修正版)
 app.get('/api/stops', async (req, res) => {
     try {
         const { trainNo, date } = req.query;
@@ -63,8 +63,8 @@ app.get('/api/stops', async (req, res) => {
         
         const token = await getTDXToken();
         
-        // 關鍵修正：改用 TrainDate 路徑 + $filter 過濾車次
-        const tdxUrl = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyTrainTimetable/TrainDate/${date}?$filter=TrainNo eq '${trainNo}'&$format=JSON`;
+        // 關鍵修正：改用 v3 的 TrainNo 與 TrainDate 路徑格式
+        const tdxUrl = `https://tdx.transportdata.tw/api/basic/v3/Rail/TRA/DailyTrainTimetable/TrainNo/${trainNo}/TrainDate/${date}?$format=JSON`;
         
         const response = await axios.get(tdxUrl, { headers: { Authorization: `Bearer ${token}` } });
         res.json(response.data);
